@@ -28,5 +28,8 @@ export function generateSlug(name: string): string {
 
 	// Append short unique ID to ensure uniqueness
 	const uniqueId = generateId(6);
-	return `${slug}-${uniqueId}`;
+
+	// If slug is empty (name was only special characters), use 'exchange' as fallback
+	const finalSlug = slug || 'exchange';
+	return `${finalSlug}-${uniqueId}`;
 }

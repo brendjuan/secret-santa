@@ -40,8 +40,8 @@ export const actions = {
 			return { error: 'Name and password are required' };
 		}
 
-		if (password.length < 4) {
-			return { error: 'Password must be at least 4 characters' };
+		if (password.length < 3) {
+			return { error: 'Password must be at least 3 characters' };
 		}
 
 		const [exchange] = await db

@@ -144,28 +144,35 @@ npm run db:push        # Push schema changes to database
 npm run db:generate    # Generate migration files
 npm run db:migrate     # Run migrations
 npm run db:studio      # Open Drizzle Studio GUI
+
+# Note: drizzle-kit push can hang on slow database connections
+# If push hangs, use one of these alternatives:
+yes | npm run db:push          # Auto-confirm interactive prompts
+npx drizzle-kit push --force   # Force push without confirmation
 ```
 
 ## Database Schema Design
 
-### Required Tables (to be implemented)
+### Implemented Tables
 
 1. **exchanges**
-   - `id`: Unique exchange identifier
-   - `adminToken`: Secret token for modification link
-   - `viewToken`: Secret token for view/share link
-   - `costMin`: Optional minimum cost constraint
-   - `costMax`: Optional maximum cost constraint
-   - `randomSeed`: Optional seed for reproducible random assignments
-   - `isGenerated`: Boolean flag if assignments have been generated
-   - `createdAt`: Timestamp
+   - `id`: Unique exchange identifier (text)
+   - `name`: Exchange name (text, required)
+   - `slug`: URL-safe slug with unique suffix (text, required, unique) - used in participant view URLs
+   - `adminToken`: Secret token for modification link (text, unique)
+   - `viewToken`: Secret token for view/share link (text, unique) - deprecated in favor of slug
+   - `theme`: Optional exchange theme (text, nullable)
+   - `costMax`: Optional maximum cost constraint (text, nullable)
+   - `randomSeed`: Optional seed for reproducible random assignments (text, nullable)
+   - `isGenerated`: Boolean flag if assignments have been generated (boolean, default false)
+   - `createdAt`: Timestamp (timestamp, default now)
 
 2. **participants**
-   - `id`: Unique participant identifier
-   - `exchangeId`: Foreign key to exchanges
-   - `name`: Participant name
-   - `password`: Hashed password for viewing assignment
-   - `assignedTo`: Foreign key to another participant (nullable until generated)
+   - `id`: Unique participant identifier (text)
+   - `exchangeId`: Foreign key to exchanges (text, cascades on delete)
+   - `name`: Participant name (text, required)
+   - `passwordHash`: Hashed password for viewing assignment (text, required)
+   - `assignedTo`: Foreign key to another participant (text, nullable until generated)
 
 ### Schema Notes
 - Use text IDs generated with nanoid or similar
@@ -198,24 +205,30 @@ npm run db:studio      # Open Drizzle Studio GUI
 ## Implementation Notes
 
 ### Current State
-- Basic SvelteKit project scaffolded
-- Drizzle ORM configured with SQLite
-- Auth utilities implemented (but using placeholder user schema)
-- Tailwind CSS configured
-- ESLint and Prettier configured
+- ✅ SvelteKit project configured with TypeScript
+- ✅ Drizzle ORM configured with PostgreSQL
+- ✅ Tailwind CSS configured and styled
+- ✅ ESLint and Prettier configured
+- ✅ Database schema implemented (exchanges and participants tables)
+- ✅ Exchange creation route (`/`) with name, theme, costMax, and randomSeed
+- ✅ Admin view route (`/exchange/[adminToken]`) for managing participants
+- ✅ Participant view route (`/view/[slug]`) with name-based URLs
+- ✅ Assignment generation algorithm with seeded random support
+- ✅ Form validation and error handling
+- ✅ Password-protected assignment viewing
 
-### Schema Issues to Fix
-- `src/lib/server/auth.ts:34` references `user.username` but schema only has `id` and `age`
-- Need to replace placeholder user/session tables with Secret Santa schema
+### Features Implemented
+- Exchange creation with customizable name, theme, and cost constraints
+- URL-friendly slugs for participant links (e.g., `/view/christmas-2025-abc123`)
+- Admin can add/remove participants before generating assignments
+- Circular assignment generation (0→1→2→...→n→0)
+- Seeded random for reproducible assignments
+- Password-protected individual assignment viewing
+- Clean, responsive UI with Tailwind CSS
 
-### Next Steps
-1. Define proper database schema for exchanges and participants
-2. Create routes for exchange creation (`/create`)
-3. Create admin view route (`/exchange/[adminToken]`)
-4. Create participant view route (`/view/[viewToken]`)
-5. Implement assignment generation algorithm
-6. Add form validation and error handling
-7. Style UI components
+### Known Issues
+- Auth utilities in `src/lib/server/auth.ts` exist but are not currently used
+- Database push can hang on slow connections (see workarounds in Development Commands)
 
 ## Environment Variables
 
