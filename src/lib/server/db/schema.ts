@@ -1,17 +1,17 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
-export const exchanges = sqliteTable('exchanges', {
+export const exchanges = pgTable('exchanges', {
 	id: text('id').primaryKey(),
 	adminToken: text('admin_token').notNull().unique(),
 	viewToken: text('view_token').notNull().unique(),
-	costMin: integer('cost_min'),
-	costMax: integer('cost_max'),
+	costMin: text('cost_min'),
+	costMax: text('cost_max'),
 	randomSeed: text('random_seed'),
-	isGenerated: integer('is_generated', { mode: 'boolean' }).notNull().default(false),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	isGenerated: boolean('is_generated').notNull().default(false),
+	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
-export const participants = sqliteTable('participants', {
+export const participants = pgTable('participants', {
 	id: text('id').primaryKey(),
 	exchangeId: text('exchange_id')
 		.notNull()
