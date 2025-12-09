@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	return {
 		exchange,
 		participants,
-		viewUrl: `/view/${exchange.viewToken}`
+		viewUrl: `/view/${exchange.slug}`
 	};
 };
 

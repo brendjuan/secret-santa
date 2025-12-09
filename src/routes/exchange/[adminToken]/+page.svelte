@@ -25,16 +25,21 @@
 <div class="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
 	<div class="max-w-4xl mx-auto py-8">
 		<div class="bg-white rounded-lg shadow-xl p-8">
-			<h1 class="text-3xl font-bold text-gray-800 mb-2">Secret Santa Admin</h1>
-			<p class="text-gray-600 mb-6">Manage your gift exchange</p>
+			<h1 class="text-3xl font-bold text-gray-800 mb-2">{data.exchange.name}</h1>
+			<p class="text-gray-600 mb-6">Secret Santa Admin</p>
 
 			<!-- Exchange Details -->
 			<div class="mb-6 p-4 bg-gray-50 rounded-lg">
 				<h2 class="text-lg font-semibold text-gray-800 mb-2">Exchange Details</h2>
 				<div class="space-y-1 text-sm text-gray-600">
-					{#if data.exchange.costMin || data.exchange.costMax}
+					{#if data.exchange.theme}
 						<p>
-							Cost Range: ${data.exchange.costMin || 0} - ${data.exchange.costMax || '∞'}
+							Theme: {data.exchange.theme}
+						</p>
+					{/if}
+					{#if data.exchange.costMax}
+						<p>
+							Maximum Cost: ${data.exchange.costMax}
 						</p>
 					{/if}
 					{#if data.exchange.randomSeed}

@@ -12,17 +12,29 @@
 		<form method="POST" action="?/create" use:enhance>
 			<div class="space-y-4">
 				<div>
-					<label for="costMin" class="block text-sm font-medium text-gray-700 mb-1">
-						Minimum Cost (optional)
+					<label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+						Exchange Name
 					</label>
 					<input
-						type="number"
-						id="costMin"
-						name="costMin"
-						min="0"
-						step="1"
+						type="text"
+						id="name"
+						name="name"
+						required
 						class="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
-						placeholder="e.g., 20"
+						placeholder="e.g., Christmas 2025"
+					/>
+				</div>
+
+				<div>
+					<label for="theme" class="block text-sm font-medium text-gray-700 mb-1">
+						Theme (optional)
+					</label>
+					<input
+						type="text"
+						id="theme"
+						name="theme"
+						class="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+						placeholder="e.g., Funny gifts, Homemade items"
 					/>
 				</div>
 

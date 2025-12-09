@@ -6,12 +6,12 @@ import * as table from '$lib/server/db/schema';
 import { verifyPassword } from '$lib/server/utils';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const { viewToken } = params;
+	const { slug } = params;
 
 	const [exchange] = await db
 		.select()
 		.from(table.exchanges)
-		.where(eq(table.exchanges.viewToken, viewToken));
+		.where(eq(table.exchanges.slug, slug));
 
 	if (!exchange) {
 		error(404, 'Exchange not found');
@@ -27,7 +27,8 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		exchange: {
-			costMin: exchange.costMin,
+			name: exchange.name,
+			theme: exchange.theme,
 			costMax: exchange.costMax,
 			isGenerated: exchange.isGenerated
 		},
@@ -37,7 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 export const actions = {
 	viewAssignment: async ({ request, params }) => {
-		const { viewToken } = params;
+		const { slug } = params;
 		const data = await request.formData();
 		const name = data.get('name')?.toString();
 		const password = data.get('password')?.toString();
@@ -49,7 +50,7 @@ export const actions = {
 		const [exchange] = await db
 			.select()
 			.from(table.exchanges)
-			.where(eq(table.exchanges.viewToken, viewToken));
+			.where(eq(table.exchanges.slug, slug));
 
 		if (!exchange) {
 			error(404, 'Exchange not found');

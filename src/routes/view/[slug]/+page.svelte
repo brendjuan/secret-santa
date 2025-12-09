@@ -8,16 +8,28 @@
 
 <div class="min-h-screen bg-gradient-to-br from-red-50 to-green-50 flex items-center justify-center p-4">
 	<div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
-		<h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Secret Santa</h1>
-		<p class="text-center text-gray-600 mb-8">View your assignment</p>
+		<h1 class="text-3xl font-bold text-center text-gray-800 mb-2">{data.exchange.name}</h1>
+		<p class="text-center text-gray-600 mb-8">Secret Santa Exchange</p>
 
 		<!-- Exchange Details -->
-		{#if data.exchange.costMin || data.exchange.costMax}
+		{#if data.exchange.theme || data.exchange.costMax}
 			<div class="mb-6 p-4 bg-gray-50 rounded-lg">
-				<h2 class="text-sm font-semibold text-gray-700 mb-1">Gift Cost Range</h2>
-				<p class="text-lg font-bold text-gray-800">
-					${data.exchange.costMin || 0} - ${data.exchange.costMax || '∞'}
-				</p>
+				{#if data.exchange.theme}
+					<div class="mb-3">
+						<h2 class="text-sm font-semibold text-gray-700 mb-1">Theme</h2>
+						<p class="text-lg font-bold text-gray-800">
+							{data.exchange.theme}
+						</p>
+					</div>
+				{/if}
+				{#if data.exchange.costMax}
+					<div>
+						<h2 class="text-sm font-semibold text-gray-700 mb-1">Maximum Gift Cost</h2>
+						<p class="text-lg font-bold text-gray-800">
+							${data.exchange.costMax}
+						</p>
+					</div>
+				{/if}
 			</div>
 		{/if}
 

@@ -2,31 +2,34 @@ import { redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { generateId, generateToken } from '$lib/server/utils';
+import { generateId, generateToken, generateSlug } from '$lib/server/utils';
 
 export const actions = {
 	create: async ({ request }) => {
 		const data = await request.formData();
-		const costMin = data.get('costMin');
+		const name = data.get('name');
+		const theme = data.get('theme');
 		const costMax = data.get('costMax');
 		const randomSeed = data.get('randomSeed');
+
+		if (!name || name.toString().trim() === '') {
+			return { error: 'Exchange name is required' };
+		}
 
 		const exchangeId = generateId();
 		const adminToken = generateToken();
 		const viewToken = generateToken();
+		const slug = generateSlug(name.toString());
 
-		const costMinNum = costMin ? parseInt(costMin.toString()) : null;
 		const costMaxNum = costMax ? parseInt(costMax.toString()) : null;
-
-		if (costMinNum !== null && costMaxNum !== null && costMinNum > costMaxNum) {
-			return { error: 'Minimum cost cannot be greater than maximum cost' };
-		}
 
 		await db.insert(table.exchanges).values({
 			id: exchangeId,
+			name: name.toString(),
+			slug,
 			adminToken,
 			viewToken,
-			costMin: costMinNum,
+			theme: theme && theme.toString().trim() !== '' ? theme.toString() : null,
 			costMax: costMaxNum,
 			randomSeed: randomSeed ? randomSeed.toString() : null,
 			isGenerated: false,

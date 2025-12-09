@@ -18,3 +18,15 @@ export function hashPassword(password: string): string {
 export function verifyPassword(password: string, hash: string): boolean {
 	return hashPassword(password) === hash;
 }
+
+export function generateSlug(name: string): string {
+	// Create URL-safe slug from name
+	const slug = name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+	// Append short unique ID to ensure uniqueness
+	const uniqueId = generateId(6);
+	return `${slug}-${uniqueId}`;
+}

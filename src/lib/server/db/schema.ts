@@ -2,9 +2,11 @@ import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const exchanges = pgTable('exchanges', {
 	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	slug: text('slug').notNull().unique(),
 	adminToken: text('admin_token').notNull().unique(),
 	viewToken: text('view_token').notNull().unique(),
-	costMin: text('cost_min'),
+	theme: text('theme'),
 	costMax: text('cost_max'),
 	randomSeed: text('random_seed'),
 	isGenerated: boolean('is_generated').notNull().default(false),
