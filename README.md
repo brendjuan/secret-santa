@@ -1,6 +1,6 @@
-# 🎅 Secret Santa
+# 🎅 Who's my santa
 
-A dead-simple web app for organizing Secret Santa gift exchanges. No accounts, no hassle, just pure holiday chaos.
+A dead-simple web app for organizing gift exchanges. No accounts, no hassle, just pure holiday chaos.
 
 ## What it does
 
@@ -8,7 +8,7 @@ Create a gift exchange, add your people, generate assignments, and share a link.
 
 ## Why this exists
 
-Because organizing Secret Santa over group chat is painful, and nobody wants to create an account just to find out they're buying a gift for Dave from accounting.
+Because organizing gift exchanges over group chat is painful, and nobody wants to create an account just to find out they're buying a gift for Dave from accounting.
 
 ## Quick start
 

@@ -1,13 +1,13 @@
-# Secret Santa Exchange - Project Guide
+# Who's my santa - Project Guide
 
 ## Project Overview
 
-A web application for creating and managing Secret Santa gift exchanges. Users can initialize exchanges, manage participants, set constraints, and securely view assignments.
+A web application for creating and managing gift exchanges. Users can initialize exchanges, manage participants, set constraints, and securely view assignments.
 
 ### Core Features
 
 1. **Exchange Creation & Management**
-   - Initialize a new Secret Santa exchange
+   - Initialize a new gift exchange
    - Generate unique modification link (full admin access)
    - Generate unique view/share link (participant access)
 

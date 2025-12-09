@@ -26,7 +26,7 @@
 	<div class="max-w-4xl mx-auto py-8">
 		<div class="bg-white rounded-lg shadow-xl p-8">
 			<h1 class="text-3xl font-bold text-gray-800 mb-2">{data.exchange.name}</h1>
-			<p class="text-gray-600 mb-6">Secret Santa Admin</p>
+			<p class="text-gray-600 mb-6">Gift Exchange Admin</p>
 
 			<!-- Exchange Details -->
 			<div class="mb-6 p-4 bg-gray-50 rounded-lg">

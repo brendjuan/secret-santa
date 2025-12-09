@@ -9,7 +9,7 @@
 <div class="min-h-screen bg-gradient-to-br from-red-50 to-green-50 flex items-center justify-center p-4">
 	<div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
 		<h1 class="text-3xl font-bold text-center text-gray-800 mb-2">{data.exchange.name}</h1>
-		<p class="text-center text-gray-600 mb-8">Secret Santa Exchange</p>
+		<p class="text-center text-gray-600 mb-8">Gift Exchange</p>
 
 		<!-- Exchange Details -->
 		{#if data.exchange.theme || data.exchange.costMax}
@@ -53,7 +53,7 @@
 		{:else if form?.success && form?.assignedTo}
 			<!-- Show Assignment -->
 			<div class="p-6 bg-green-50 border-2 border-green-200 rounded-lg text-center">
-				<p class="text-green-800 font-medium mb-2">You are Secret Santa for:</p>
+				<p class="text-green-800 font-medium mb-2">You're buying a gift for:</p>
 				<p class="text-3xl font-bold text-green-900">{form.assignedTo}</p>
 			</div>
 		{:else}
