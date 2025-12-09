@@ -172,6 +172,41 @@ export const actions = {
 
 		// Redirect to trigger regeneration
 		redirect(303, `/exchange/${adminToken}`);
+	},
+
+	updatePassword: async ({ request, params }) => {
+		const { adminToken } = params;
+		const data = await request.formData();
+		const participantId = data.get('participantId')?.toString();
+		const password = data.get('password')?.toString();
+
+		if (!participantId || !password) {
+			return { error: 'Participant ID and password are required' };
+		}
+
+		if (password.length < 3) {
+			return { error: 'Password must be at least 3 characters' };
+		}
+
+		const [exchange] = await db
+			.select()
+			.from(table.exchanges)
+			.where(eq(table.exchanges.adminToken, adminToken));
+
+		if (!exchange) {
+			error(404, 'Exchange not found');
+		}
+
+		if (exchange.isGenerated) {
+			return { error: 'Cannot update passwords after assignments are generated' };
+		}
+
+		await db
+			.update(table.participants)
+			.set({ passwordHash: hashPassword(password) })
+			.where(eq(table.participants.id, participantId));
+
+		return { success: true };
 	}
 } satisfies Actions;
 
