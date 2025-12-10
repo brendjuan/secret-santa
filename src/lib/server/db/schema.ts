@@ -23,7 +23,22 @@ export const participants = pgTable('participants', {
 	assignedTo: text('assigned_to').references(() => participants.id)
 });
 
+export const forcedRelationships = pgTable('forced_relationships', {
+	id: text('id').primaryKey(),
+	exchangeId: text('exchange_id')
+		.notNull()
+		.references(() => exchanges.id, { onDelete: 'cascade' }),
+	giverId: text('giver_id')
+		.notNull()
+		.references(() => participants.id, { onDelete: 'cascade' }),
+	receiverId: text('receiver_id')
+		.notNull()
+		.references(() => participants.id, { onDelete: 'cascade' })
+});
+
 export type Exchange = typeof exchanges.$inferSelect;
 export type Participant = typeof participants.$inferSelect;
+export type ForcedRelationship = typeof forcedRelationships.$inferSelect;
 export type NewExchange = typeof exchanges.$inferInsert;
 export type NewParticipant = typeof participants.$inferInsert;
+export type NewForcedRelationship = typeof forcedRelationships.$inferInsert;

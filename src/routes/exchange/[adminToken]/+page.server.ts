@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -22,9 +22,15 @@ export const load: PageServerLoad = async ({ params }) => {
 		.from(table.participants)
 		.where(eq(table.participants.exchangeId, exchange.id));
 
+	const forcedRelationships = await db
+		.select()
+		.from(table.forcedRelationships)
+		.where(eq(table.forcedRelationships.exchangeId, exchange.id));
+
 	return {
 		exchange,
 		participants,
+		forcedRelationships,
 		viewUrl: `/view/${exchange.slug}`
 	};
 };
@@ -118,25 +124,96 @@ export const actions = {
 			return { error: 'Need at least 2 participants to generate assignments' };
 		}
 
-		// Shuffle participants using Fisher-Yates algorithm
-		const shuffled = [...participants];
-		const seed = exchange.randomSeed ? hashSeed(exchange.randomSeed) : Math.random();
-		let random = seededRandom(seed);
+		const forcedRelationships = await db
+			.select()
+			.from(table.forcedRelationships)
+			.where(eq(table.forcedRelationships.exchangeId, exchange.id));
 
-		for (let i = shuffled.length - 1; i > 0; i--) {
-			const j = Math.floor(random() * (i + 1));
-			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		// Validate forced relationships don't create conflicts
+		const forcedGivers = new Set(forcedRelationships.map(r => r.giverId));
+		const forcedReceivers = new Set(forcedRelationships.map(r => r.receiverId));
+
+		// Check for duplicate receivers (one person can't receive from multiple people)
+		if (forcedReceivers.size !== forcedRelationships.length) {
+			return { error: 'Forced relationships conflict: one person cannot receive gifts from multiple people' };
 		}
 
-		// Create circular assignments (0->1, 1->2, ..., n-1->0)
-		for (let i = 0; i < shuffled.length; i++) {
-			const giver = shuffled[i];
-			const receiver = shuffled[(i + 1) % shuffled.length];
+		// Check for circular conflicts in forced relationships
+		for (const rel of forcedRelationships) {
+			const conflictingRel = forcedRelationships.find(r => r.giverId === rel.receiverId && r.receiverId === rel.giverId);
+			if (conflictingRel) {
+				return { error: 'Forced relationships conflict: circular dependency detected' };
+			}
+		}
 
+		const assignments = new Map<string, string>();
+		const availableReceivers = new Set(participants.map(p => p.id));
+		const availableGivers = new Set(participants.map(p => p.id));
+
+		// Apply forced relationships first
+		for (const relationship of forcedRelationships) {
+			assignments.set(relationship.giverId, relationship.receiverId);
+			availableReceivers.delete(relationship.receiverId);
+			availableGivers.delete(relationship.giverId);
+		}
+
+		// Generate assignments for remaining participants
+		const remainingGivers = Array.from(availableGivers);
+		const remainingReceivers = Array.from(availableReceivers);
+
+		if (remainingGivers.length !== remainingReceivers.length) {
+			return { error: 'Cannot generate valid assignments with current forced relationships' };
+		}
+
+		if (remainingGivers.length > 0) {
+			// Shuffle remaining participants
+			const seed = exchange.randomSeed ? hashSeed(exchange.randomSeed) : Math.random();
+			let random = seededRandom(seed);
+
+			// Shuffle receivers
+			for (let i = remainingReceivers.length - 1; i > 0; i--) {
+				const j = Math.floor(random() * (i + 1));
+				[remainingReceivers[i], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[i]];
+			}
+
+			// Try to create a valid assignment avoiding self-assignments
+			let attempts = 0;
+			let validAssignment = false;
+
+			while (!validAssignment && attempts < 100) {
+				validAssignment = true;
+
+				// Check if current assignment would create self-assignments
+				for (let i = 0; i < remainingGivers.length; i++) {
+					if (remainingGivers[i] === remainingReceivers[i]) {
+						// Shuffle again
+						for (let k = remainingReceivers.length - 1; k > 0; k--) {
+							const j = Math.floor(random() * (k + 1));
+							[remainingReceivers[k], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[k]];
+						}
+						validAssignment = false;
+						break;
+					}
+				}
+				attempts++;
+			}
+
+			if (!validAssignment) {
+				return { error: 'Unable to generate valid assignments. Try different forced relationships.' };
+			}
+
+			// Assign remaining participants
+			for (let i = 0; i < remainingGivers.length; i++) {
+				assignments.set(remainingGivers[i], remainingReceivers[i]);
+			}
+		}
+
+		// Save all assignments to database
+		for (const [giverId, receiverId] of assignments) {
 			await db
 				.update(table.participants)
-				.set({ assignedTo: receiver.id })
-				.where(eq(table.participants.id, giver.id));
+				.set({ assignedTo: receiverId })
+				.where(eq(table.participants.id, giverId));
 		}
 
 		await db
@@ -205,6 +282,88 @@ export const actions = {
 			.update(table.participants)
 			.set({ passwordHash: hashPassword(password) })
 			.where(eq(table.participants.id, participantId));
+
+		return { success: true };
+	},
+
+	addForcedRelationship: async ({ request, params }) => {
+		const { adminToken } = params;
+		const data = await request.formData();
+		const giverId = data.get('giverId')?.toString();
+		const receiverId = data.get('receiverId')?.toString();
+
+		if (!giverId || !receiverId) {
+			return { error: 'Both giver and receiver must be selected' };
+		}
+
+		if (giverId === receiverId) {
+			return { error: 'A participant cannot be assigned to themselves' };
+		}
+
+		const [exchange] = await db
+			.select()
+			.from(table.exchanges)
+			.where(eq(table.exchanges.adminToken, adminToken));
+
+		if (!exchange) {
+			error(404, 'Exchange not found');
+		}
+
+		if (exchange.isGenerated) {
+			return { error: 'Cannot add forced relationships after assignments are generated' };
+		}
+
+		// Check if this forced relationship already exists
+		const existingRelationship = await db
+			.select()
+			.from(table.forcedRelationships)
+			.where(
+				and(
+					eq(table.forcedRelationships.exchangeId, exchange.id),
+					eq(table.forcedRelationships.giverId, giverId),
+					eq(table.forcedRelationships.receiverId, receiverId)
+				)
+			);
+
+		if (existingRelationship.length > 0) {
+			return { error: 'This forced relationship already exists' };
+		}
+
+		await db.insert(table.forcedRelationships).values({
+			id: generateId(),
+			exchangeId: exchange.id,
+			giverId,
+			receiverId
+		});
+
+		return { success: true };
+	},
+
+	removeForcedRelationship: async ({ request, params }) => {
+		const { adminToken } = params;
+		const data = await request.formData();
+		const relationshipId = data.get('relationshipId')?.toString();
+
+		if (!relationshipId) {
+			return { error: 'Relationship ID is required' };
+		}
+
+		const [exchange] = await db
+			.select()
+			.from(table.exchanges)
+			.where(eq(table.exchanges.adminToken, adminToken));
+
+		if (!exchange) {
+			error(404, 'Exchange not found');
+		}
+
+		if (exchange.isGenerated) {
+			return { error: 'Cannot remove forced relationships after assignments are generated' };
+		}
+
+		await db
+			.delete(table.forcedRelationships)
+			.where(eq(table.forcedRelationships.id, relationshipId));
 
 		return { success: true };
 	}

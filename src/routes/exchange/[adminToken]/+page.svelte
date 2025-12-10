@@ -8,6 +8,7 @@
 	let editingPasswordId = $state<string | null>(null);
 	let passwordValues = $state<Record<string, string>>({});
 	let visibleAssignments = $state<Set<string>>(new Set());
+	let showForcedRelationships = $state(false);
 
 	const viewUrl = `${$page.url.origin}${data.viewUrl}`;
 
@@ -40,6 +41,11 @@
 			newSet.add(participantId);
 		}
 		visibleAssignments = newSet;
+	}
+
+	function getParticipantName(participantId: string) {
+		const participant = data.participants.find((p) => p.id === participantId);
+		return participant?.name || 'Unknown';
 	}
 </script>
 
@@ -268,6 +274,103 @@
 					</table>
 				</div>
 			</div>
+
+			<!-- Forced Relationships Toggle -->
+			{#if !data.exchange.isGenerated}
+				<div class="mb-6">
+					<label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+						<input
+							type="checkbox"
+							bind:checked={showForcedRelationships}
+							class="rounded border-gray-300 text-red-600 focus:ring-red-500"
+						/>
+						Show advanced options (forced relationships)
+					</label>
+				</div>
+
+				<!-- Forced Relationships Section -->
+				{#if showForcedRelationships}
+					<div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+						<h3 class="text-lg font-semibold text-gray-800 mb-2">Forced Relationships</h3>
+						<p class="text-sm text-gray-600 mb-4">
+							Force specific participants to be assigned to each other. Use this to ensure certain pairings.
+						</p>
+
+						{#if form?.error}
+							<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+								{form.error}
+							</div>
+						{/if}
+
+						<!-- Existing Forced Relationships -->
+						{#if data.forcedRelationships.length > 0}
+							<div class="mb-4">
+								<h4 class="text-sm font-medium text-gray-700 mb-2">Current Forced Relationships:</h4>
+								<div class="space-y-2">
+									{#each data.forcedRelationships as relationship}
+										<div class="flex items-center justify-between bg-white border rounded-md p-3">
+											<span class="text-sm">
+												<strong>{getParticipantName(relationship.giverId)}</strong>
+												→
+												<strong>{getParticipantName(relationship.receiverId)}</strong>
+											</span>
+											<form method="POST" action="?/removeForcedRelationship" use:enhance>
+												<input type="hidden" name="relationshipId" value={relationship.id} />
+												<button
+													type="submit"
+													class="text-red-600 hover:text-red-900 text-sm font-medium"
+												>
+													Remove
+												</button>
+											</form>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Add New Forced Relationship -->
+						<div class="border border-gray-200 rounded-md p-3 bg-white">
+							<h4 class="text-sm font-medium text-gray-700 mb-3">Add New Forced Relationship:</h4>
+							<form method="POST" action="?/addForcedRelationship" use:enhance class="flex gap-4 items-end">
+								<div class="flex-1">
+									<label class="block text-xs font-medium text-gray-700 mb-1">Who gives:</label>
+									<select
+										name="giverId"
+										required
+										class="w-full rounded-md border-gray-300 text-sm"
+									>
+										<option value="">Select giver...</option>
+										{#each data.participants as participant}
+											<option value={participant.id}>{participant.name}</option>
+										{/each}
+									</select>
+								</div>
+								<div class="flex-1">
+									<label class="block text-xs font-medium text-gray-700 mb-1">Who receives:</label>
+									<select
+										name="receiverId"
+										required
+										class="w-full rounded-md border-gray-300 text-sm"
+									>
+										<option value="">Select receiver...</option>
+										{#each data.participants as participant}
+											<option value={participant.id}>{participant.name}</option>
+										{/each}
+									</select>
+								</div>
+								<button
+									type="submit"
+									class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium whitespace-nowrap"
+									disabled={data.participants.length < 2}
+								>
+									Add Forced Relationship
+								</button>
+							</form>
+						</div>
+					</div>
+				{/if}
+			{/if}
 
 			<!-- Generate Assignments Button -->
 			{#if !data.exchange.isGenerated}
