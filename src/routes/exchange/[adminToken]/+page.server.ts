@@ -158,6 +158,17 @@ export const actions = {
 			}
 		}
 
+		// Check if avoid constraints make assignment impossible
+		const impossibleConstraints = detectImpossibleConstraints(
+			participants.map(p => p.id),
+			forcedRelationships.map(r => ({ giverId: r.giverId, receiverId: r.receiverId })),
+			avoidRelationships.map(r => ({ giverId: r.giverId, receiverId: r.receiverId }))
+		);
+
+		if (impossibleConstraints) {
+			return { error: impossibleConstraints };
+		}
+
 		const assignments = new Map<string, string>();
 		const availableReceivers = new Set(participants.map(p => p.id));
 		const availableGivers = new Set(participants.map(p => p.id));
@@ -178,61 +189,24 @@ export const actions = {
 		}
 
 		if (remainingGivers.length > 0) {
-			// Shuffle remaining participants
-			const seed = exchange.randomSeed ? hashSeed(exchange.randomSeed) : Math.random();
-			let random = seededRandom(seed);
-
-			// Shuffle receivers
-			for (let i = remainingReceivers.length - 1; i > 0; i--) {
-				const j = Math.floor(random() * (i + 1));
-				[remainingReceivers[i], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[i]];
-			}
-
 			// Create avoid pairs set for quick lookup
 			const avoidPairs = new Set(avoidRelationships.map(r => `${r.giverId}-${r.receiverId}`));
 
-			// Try to create a valid assignment avoiding self-assignments and avoid relationships
-			let attempts = 0;
-			let validAssignment = false;
+			// Use backtracking algorithm to find valid assignments
+			const validAssignments = findValidAssignments(
+				remainingGivers,
+				remainingReceivers,
+				avoidPairs,
+				exchange.randomSeed
+			);
 
-			while (!validAssignment && attempts < 100) {
-				validAssignment = true;
-
-				// Check if current assignment would create self-assignments or violate avoid relationships
-				for (let i = 0; i < remainingGivers.length; i++) {
-					const giverId = remainingGivers[i];
-					const receiverId = remainingReceivers[i];
-
-					// Check for self-assignment
-					if (giverId === receiverId) {
-						validAssignment = false;
-						break;
-					}
-
-					// Check for avoid relationships
-					if (avoidPairs.has(`${giverId}-${receiverId}`)) {
-						validAssignment = false;
-						break;
-					}
-				}
-
-				if (!validAssignment) {
-					// Shuffle again
-					for (let k = remainingReceivers.length - 1; k > 0; k--) {
-						const j = Math.floor(random() * (k + 1));
-						[remainingReceivers[k], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[k]];
-					}
-				}
-				attempts++;
+			if (!validAssignments) {
+				return { error: 'Unable to generate valid assignments. The avoid constraints make it impossible to create a valid assignment.' };
 			}
 
-			if (!validAssignment) {
-				return { error: 'Unable to generate valid assignments. Try different relationship constraints.' };
-			}
-
-			// Assign remaining participants
+			// Apply the valid assignments
 			for (let i = 0; i < remainingGivers.length; i++) {
-				assignments.set(remainingGivers[i], remainingReceivers[i]);
+				assignments.set(remainingGivers[i], validAssignments[i]);
 			}
 		}
 
@@ -504,4 +478,128 @@ function seededRandom(seed: number) {
 		seed = (seed * 9301 + 49297) % 233280;
 		return seed / 233280;
 	};
+}
+
+// Backtracking algorithm to find valid assignments considering avoid constraints
+function findValidAssignments(
+	givers: string[],
+	receivers: string[],
+	avoidPairs: Set<string>,
+	randomSeed?: string | null
+): string[] | null {
+	const n = givers.length;
+	const assignment: string[] = new Array(n);
+	const usedReceivers = new Set<string>();
+
+	// Create shuffled receivers list for randomness
+	const shuffledReceivers = [...receivers];
+	if (randomSeed) {
+		const seed = hashSeed(randomSeed);
+		const random = seededRandom(seed);
+		// Fisher-Yates shuffle with seeded random
+		for (let i = shuffledReceivers.length - 1; i > 0; i--) {
+			const j = Math.floor(random() * (i + 1));
+			[shuffledReceivers[i], shuffledReceivers[j]] = [shuffledReceivers[j], shuffledReceivers[i]];
+		}
+	} else {
+		// Standard shuffle
+		for (let i = shuffledReceivers.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffledReceivers[i], shuffledReceivers[j]] = [shuffledReceivers[j], shuffledReceivers[i]];
+		}
+	}
+
+	function backtrack(giverIndex: number): boolean {
+		if (giverIndex === n) {
+			return true; // Successfully assigned all givers
+		}
+
+		const giverId = givers[giverIndex];
+
+		// Try each receiver in shuffled order
+		for (const receiverId of shuffledReceivers) {
+			// Skip if receiver already used
+			if (usedReceivers.has(receiverId)) {
+				continue;
+			}
+
+			// Skip if self-assignment
+			if (giverId === receiverId) {
+				continue;
+			}
+
+			// Skip if avoid constraint exists
+			if (avoidPairs.has(`${giverId}-${receiverId}`)) {
+				continue;
+			}
+
+			// Try this assignment
+			assignment[giverIndex] = receiverId;
+			usedReceivers.add(receiverId);
+
+			// Recurse to next giver
+			if (backtrack(giverIndex + 1)) {
+				return true;
+			}
+
+			// Backtrack
+			usedReceivers.delete(receiverId);
+		}
+
+		return false; // No valid assignment found for this giver
+	}
+
+	// Start backtracking
+	if (backtrack(0)) {
+		return assignment;
+	}
+
+	return null; // No valid assignment exists
+}
+
+// Check if constraints make valid assignment impossible
+function detectImpossibleConstraints(
+	allParticipants: string[],
+	forcedRels: { giverId: string; receiverId: string }[],
+	avoidRels: { giverId: string; receiverId: string }[]
+): string | null {
+	// For each participant, check if they have valid assignment options
+	for (const giverId of allParticipants) {
+		// Skip if this person is already forced to give to someone
+		if (forcedRels.some(r => r.giverId === giverId)) {
+			continue;
+		}
+
+		// Count valid receivers for this giver
+		let validReceivers = 0;
+		for (const receiverId of allParticipants) {
+			// Can't give to themselves
+			if (giverId === receiverId) continue;
+
+			// Can't give to someone who's already forced to receive from someone else
+			if (forcedRels.some(r => r.receiverId === receiverId)) continue;
+
+			// Can't give to someone they're set to avoid
+			if (avoidRels.some(r => r.giverId === giverId && r.receiverId === receiverId)) continue;
+
+			validReceivers++;
+		}
+
+		if (validReceivers === 0) {
+			const participant = allParticipants.find(p => p === giverId);
+			return `No valid assignment possible: participant ${giverId} has no available recipients due to constraints.`;
+		}
+	}
+
+	// Check if we have too many avoid constraints
+	const totalAvoidConstraints = avoidRels.length;
+	const maxPossibleAssignments = allParticipants.length * (allParticipants.length - 1); // n * (n-1) - can't assign to self
+	const forcedConstraints = forcedRels.length;
+
+	// This is a rough heuristic - if avoid constraints are too dense, it might be impossible
+	if (totalAvoidConstraints > maxPossibleAssignments * 0.5) {
+		return 'Too many avoid constraints may make valid assignment impossible. Consider reducing avoid relationships.';
+	}
+
+	return null; // Constraints appear feasible
 }
