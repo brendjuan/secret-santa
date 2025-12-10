@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { generateId, hashPassword, generateToken } from '$lib/server/utils';
+import { generateId, hashPassword, generateToken, generateRandomPassword } from '$lib/server/utils';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { adminToken } = params;
@@ -76,7 +76,8 @@ export const actions = {
 			email: email?.trim() || null,
 			passwordHash: hashPassword(password),
 			assignedTo: null,
-			personalToken: generateToken()
+			personalToken: generateToken(),
+			urlKey: generateRandomPassword(12)
 		});
 
 		return { success: true };
@@ -444,6 +445,44 @@ export const actions = {
 					.set({ personalToken: generateToken() })
 					.where(eq(table.participants.id, participant.id));
 			}
+		}
+
+		return { success: true };
+	},
+
+	randomizePasswords: async ({ params }) => {
+		const { adminToken } = params;
+
+		const [exchange] = await db
+			.select()
+			.from(table.exchanges)
+			.where(eq(table.exchanges.adminToken, adminToken));
+
+		if (!exchange) {
+			error(404, 'Exchange not found');
+		}
+
+		if (exchange.isGenerated) {
+			return { error: 'Cannot randomize passwords after assignments are generated' };
+		}
+
+		// Get all participants in this exchange
+		const participants = await db
+			.select()
+			.from(table.participants)
+			.where(eq(table.participants.exchangeId, exchange.id));
+
+		// Update each participant with a new random password and URL key
+		for (const participant of participants) {
+			const newPassword = generateRandomPassword(10);
+			const urlKey = generateRandomPassword(12); // Slightly longer for URLs
+			await db
+				.update(table.participants)
+				.set({
+					passwordHash: hashPassword(newPassword),
+					urlKey: urlKey
+				})
+				.where(eq(table.participants.id, participant.id));
 		}
 
 		return { success: true };

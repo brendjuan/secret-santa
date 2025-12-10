@@ -49,8 +49,8 @@
 	}
 
 	function getPersonalUrl(participant: any) {
-		if (!participant.personalToken) return '';
-		return `${$page.url.origin}/personal/${participant.id}/${participant.personalToken}`;
+		if (!participant.urlKey) return '';
+		return `${$page.url.origin}/personal/${participant.id}/${participant.urlKey}`;
 	}
 
 	function copyPersonalUrl(participant: any) {
@@ -233,7 +233,7 @@
 											{/if}
 										</td>
 										<td class="px-6 py-4 whitespace-nowrap text-sm">
-											{#if participant.personalToken}
+											{#if participant.urlKey}
 												<div class="flex items-center gap-2">
 													<span class="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
 														.../personal/{participant.id.slice(0, 8)}...
@@ -247,7 +247,7 @@
 													</button>
 												</div>
 											{:else}
-												<span class="text-gray-400 text-xs">No token</span>
+												<span class="text-gray-400 text-xs">No key</span>
 											{/if}
 										</td>
 									{/if}
@@ -318,6 +318,24 @@
 					</table>
 				</div>
 			</div>
+
+			<!-- Password Management -->
+			{#if !data.exchange.isGenerated && data.participants.length > 0}
+				<div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+					<h3 class="text-lg font-semibold text-gray-800 mb-2">Password Management</h3>
+					<p class="text-sm text-gray-600 mb-4">
+						Generate random passwords for all participants. This will create both new login passwords and URL keys for direct assignment access.
+					</p>
+					<form method="POST" action="?/randomizePasswords" use:enhance>
+						<button
+							type="submit"
+							class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium"
+						>
+							Randomize All Passwords
+						</button>
+					</form>
+				</div>
+			{/if}
 
 			<!-- Forced Relationships Toggle -->
 			{#if !data.exchange.isGenerated}
@@ -484,21 +502,13 @@
 			{:else}
 				<div class="space-y-4">
 					<!-- Personal URLs Section -->
-					{#if data.participants.filter(p => !p.personalToken).length > 0}
-						{@const participantsWithoutTokens = data.participants.filter(p => !p.personalToken)}
+					{#if data.participants.filter(p => !p.urlKey).length > 0}
+						{@const participantsWithoutKeys = data.participants.filter(p => !p.urlKey)}
 						<div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
 							<h3 class="font-semibold text-gray-800 mb-2">Personal URLs</h3>
 							<p class="text-sm text-gray-600 mb-3">
-								Some participants don't have personal URLs yet. Generate them to allow direct assignment viewing.
+								Some participants don't have URL keys yet. Use "Randomize All Passwords" above to generate them.
 							</p>
-							<form method="POST" action="?/generatePersonalTokens" use:enhance>
-								<button
-									type="submit"
-									class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
-								>
-									Generate Personal URLs
-								</button>
-							</form>
 						</div>
 					{:else}
 						<div class="p-4 bg-green-50 border border-green-200 rounded-lg">

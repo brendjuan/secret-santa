@@ -33,3 +33,15 @@ export function generateSlug(name: string): string {
 	const finalSlug = slug || 'exchange';
 	return `${finalSlug}-${uniqueId}`;
 }
+
+export function generateRandomPassword(length: number = 12): string {
+	// Generate a user-friendly random password using alphanumeric characters
+	// Avoiding confusing characters like 0, O, I, l, 1
+	const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+	const bytes = crypto.getRandomValues(new Uint8Array(length));
+	let result = '';
+	for (let i = 0; i < length; i++) {
+		result += chars[bytes[i] % chars.length];
+	}
+	return result;
+}
