@@ -118,6 +118,9 @@
 								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
 									Name
 								</th>
+								<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+									Email
+								</th>
 								{#if !data.exchange.isGenerated}
 									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
 										Password
@@ -140,6 +143,9 @@
 								<tr>
 									<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 										{participant.name}
+									</td>
+									<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+										{participant.email || '-'}
 									</td>
 									{#if !data.exchange.isGenerated}
 										<td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -231,7 +237,7 @@
 							{#if !data.exchange.isGenerated}
 								<!-- Add Participant Row -->
 								<tr class="bg-gray-50">
-									<td colspan="3" class="px-6 py-4">
+									<td colspan="4" class="px-6 py-4">
 										<form
 											method="POST"
 											action="?/addParticipant"
@@ -243,6 +249,12 @@
 												name="name"
 												required
 												placeholder="Name"
+												class="flex-1 rounded-md border-gray-300 text-sm"
+											/>
+											<input
+												type="email"
+												name="email"
+												placeholder="Email (optional)"
 												class="flex-1 rounded-md border-gray-300 text-sm"
 											/>
 											<input
@@ -265,7 +277,7 @@
 							{/if}
 							{#if data.participants.length === 0}
 								<tr>
-									<td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">
+									<td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
 										No participants yet. Add one below!
 									</td>
 								</tr>
@@ -284,16 +296,16 @@
 							bind:checked={showForcedRelationships}
 							class="rounded border-gray-300 text-red-600 focus:ring-red-500"
 						/>
-						Show advanced options (forced relationships)
+						Show advanced options (relationship constraints)
 					</label>
 				</div>
 
-				<!-- Forced Relationships Section -->
+				<!-- Relationship Constraints Section -->
 				{#if showForcedRelationships}
 					<div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-						<h3 class="text-lg font-semibold text-gray-800 mb-2">Forced Relationships</h3>
+						<h3 class="text-lg font-semibold text-gray-800 mb-2">Relationship Constraints</h3>
 						<p class="text-sm text-gray-600 mb-4">
-							Force specific participants to be assigned to each other. Use this to ensure certain pairings.
+							Control specific participant assignments. Force relationships to ensure certain pairings, or avoid relationships to prevent them.
 						</p>
 
 						{#if form?.error}
@@ -302,69 +314,118 @@
 							</div>
 						{/if}
 
-						<!-- Existing Forced Relationships -->
+						<!-- Existing Relationships -->
 						{#if data.forcedRelationships.length > 0}
-							<div class="mb-4">
-								<h4 class="text-sm font-medium text-gray-700 mb-2">Current Forced Relationships:</h4>
-								<div class="space-y-2">
-									{#each data.forcedRelationships as relationship}
-										<div class="flex items-center justify-between bg-white border rounded-md p-3">
-											<span class="text-sm">
-												<strong>{getParticipantName(relationship.giverId)}</strong>
-												→
-												<strong>{getParticipantName(relationship.receiverId)}</strong>
-											</span>
-											<form method="POST" action="?/removeForcedRelationship" use:enhance>
-												<input type="hidden" name="relationshipId" value={relationship.id} />
-												<button
-													type="submit"
-													class="text-red-600 hover:text-red-900 text-sm font-medium"
-												>
-													Remove
-												</button>
-											</form>
+							<div class="mb-4 space-y-4">
+								<!-- Forced Relationships -->
+								{@const forcedRels = data.forcedRelationships.filter(r => r.relationshipType === 'force')}
+								{#if forcedRels.length > 0}
+									<div>
+										<h4 class="text-sm font-medium text-gray-700 mb-2">Forced Relationships:</h4>
+										<div class="space-y-2">
+											{#each forcedRels as relationship}
+												<div class="flex items-center justify-between bg-white border border-green-200 rounded-md p-3">
+													<span class="text-sm">
+														<span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+														<strong>{getParticipantName(relationship.giverId)}</strong>
+														→
+														<strong>{getParticipantName(relationship.receiverId)}</strong>
+													</span>
+													<form method="POST" action="?/removeForcedRelationship" use:enhance>
+														<input type="hidden" name="relationshipId" value={relationship.id} />
+														<button
+															type="submit"
+															class="text-red-600 hover:text-red-900 text-sm font-medium"
+														>
+															Remove
+														</button>
+													</form>
+												</div>
+											{/each}
 										</div>
-									{/each}
-								</div>
+									</div>
+								{/if}
+
+								<!-- Avoid Relationships -->
+								{@const avoidRels = data.forcedRelationships.filter(r => r.relationshipType === 'avoid')}
+								{#if avoidRels.length > 0}
+									<div>
+										<h4 class="text-sm font-medium text-gray-700 mb-2">Avoid Relationships:</h4>
+										<div class="space-y-2">
+											{#each avoidRels as relationship}
+												<div class="flex items-center justify-between bg-white border border-red-200 rounded-md p-3">
+													<span class="text-sm">
+														<span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+														<strong>{getParticipantName(relationship.giverId)}</strong>
+														<span class="text-red-600">✗</span>
+														<strong>{getParticipantName(relationship.receiverId)}</strong>
+													</span>
+													<form method="POST" action="?/removeForcedRelationship" use:enhance>
+														<input type="hidden" name="relationshipId" value={relationship.id} />
+														<button
+															type="submit"
+															class="text-red-600 hover:text-red-900 text-sm font-medium"
+														>
+															Remove
+														</button>
+													</form>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
 							</div>
 						{/if}
 
-						<!-- Add New Forced Relationship -->
+						<!-- Add New Relationship -->
 						<div class="border border-gray-200 rounded-md p-3 bg-white">
-							<h4 class="text-sm font-medium text-gray-700 mb-3">Add New Forced Relationship:</h4>
-							<form method="POST" action="?/addForcedRelationship" use:enhance class="flex gap-4 items-end">
-								<div class="flex-1">
-									<label class="block text-xs font-medium text-gray-700 mb-1">Who gives:</label>
-									<select
-										name="giverId"
-										required
-										class="w-full rounded-md border-gray-300 text-sm"
-									>
-										<option value="">Select giver...</option>
-										{#each data.participants as participant}
-											<option value={participant.id}>{participant.name}</option>
-										{/each}
-									</select>
-								</div>
-								<div class="flex-1">
-									<label class="block text-xs font-medium text-gray-700 mb-1">Who receives:</label>
-									<select
-										name="receiverId"
-										required
-										class="w-full rounded-md border-gray-300 text-sm"
-									>
-										<option value="">Select receiver...</option>
-										{#each data.participants as participant}
-											<option value={participant.id}>{participant.name}</option>
-										{/each}
-									</select>
+							<h4 class="text-sm font-medium text-gray-700 mb-3">Add New Relationship Constraint:</h4>
+							<form method="POST" action="?/addForcedRelationship" use:enhance class="space-y-3">
+								<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+									<div>
+										<label class="block text-xs font-medium text-gray-700 mb-1">From:</label>
+										<select
+											name="giverId"
+											required
+											class="w-full rounded-md border-gray-300 text-sm"
+										>
+											<option value="">Select person...</option>
+											{#each data.participants as participant}
+												<option value={participant.id}>{participant.name}</option>
+											{/each}
+										</select>
+									</div>
+									<div>
+										<label class="block text-xs font-medium text-gray-700 mb-1">To:</label>
+										<select
+											name="receiverId"
+											required
+											class="w-full rounded-md border-gray-300 text-sm"
+										>
+											<option value="">Select person...</option>
+											{#each data.participants as participant}
+												<option value={participant.id}>{participant.name}</option>
+											{/each}
+										</select>
+									</div>
+									<div>
+										<label class="block text-xs font-medium text-gray-700 mb-1">Type:</label>
+										<select
+											name="relationshipType"
+											required
+											class="w-full rounded-md border-gray-300 text-sm"
+										>
+											<option value="force">Force (must give to)</option>
+											<option value="avoid">Avoid (cannot give to)</option>
+										</select>
+									</div>
 								</div>
 								<button
 									type="submit"
-									class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium whitespace-nowrap"
+									class="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium"
 									disabled={data.participants.length < 2}
 								>
-									Add Forced Relationship
+									Add Relationship Constraint
 								</button>
 							</form>
 						</div>

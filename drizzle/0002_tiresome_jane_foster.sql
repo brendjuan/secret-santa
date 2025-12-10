@@ -1,0 +1,1 @@
+ALTER TABLE "forced_relationships" ADD COLUMN "relationship_type" text DEFAULT 'force' NOT NULL;

@@ -8,6 +8,20 @@
       "when": 1765304395372,
       "tag": "0000_add_name_slug_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765401473540,
+      "tag": "0001_open_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765402070269,
+      "tag": "0002_tiresome_jane_foster",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ export const participants = pgTable('participants', {
 		.notNull()
 		.references(() => exchanges.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
+	email: text('email'),
 	passwordHash: text('password_hash').notNull(),
 	assignedTo: text('assigned_to').references(() => participants.id)
 });
@@ -33,7 +34,8 @@ export const forcedRelationships = pgTable('forced_relationships', {
 		.references(() => participants.id, { onDelete: 'cascade' }),
 	receiverId: text('receiver_id')
 		.notNull()
-		.references(() => participants.id, { onDelete: 'cascade' })
+		.references(() => participants.id, { onDelete: 'cascade' }),
+	relationshipType: text('relationship_type').notNull().default('force') // 'force' or 'avoid'
 });
 
 export type Exchange = typeof exchanges.$inferSelect;

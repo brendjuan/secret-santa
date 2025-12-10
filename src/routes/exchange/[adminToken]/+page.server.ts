@@ -40,6 +40,7 @@ export const actions = {
 		const { adminToken } = params;
 		const data = await request.formData();
 		const name = data.get('name')?.toString();
+		const email = data.get('email')?.toString();
 		const password = data.get('password')?.toString();
 
 		if (!name || !password) {
@@ -48,6 +49,11 @@ export const actions = {
 
 		if (password.length < 3) {
 			return { error: 'Password must be at least 3 characters' };
+		}
+
+		// Basic email validation if provided
+		if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			return { error: 'Please enter a valid email address' };
 		}
 
 		const [exchange] = await db
@@ -67,6 +73,7 @@ export const actions = {
 			id: generateId(),
 			exchangeId: exchange.id,
 			name,
+			email: email?.trim() || null,
 			passwordHash: hashPassword(password),
 			assignedTo: null
 		});
@@ -124,10 +131,13 @@ export const actions = {
 			return { error: 'Need at least 2 participants to generate assignments' };
 		}
 
-		const forcedRelationships = await db
+		const allRelationships = await db
 			.select()
 			.from(table.forcedRelationships)
 			.where(eq(table.forcedRelationships.exchangeId, exchange.id));
+
+		const forcedRelationships = allRelationships.filter(r => r.relationshipType === 'force');
+		const avoidRelationships = allRelationships.filter(r => r.relationshipType === 'avoid');
 
 		// Validate forced relationships don't create conflicts
 		const forcedGivers = new Set(forcedRelationships.map(r => r.giverId));
@@ -176,30 +186,46 @@ export const actions = {
 				[remainingReceivers[i], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[i]];
 			}
 
-			// Try to create a valid assignment avoiding self-assignments
+			// Create avoid pairs set for quick lookup
+			const avoidPairs = new Set(avoidRelationships.map(r => `${r.giverId}-${r.receiverId}`));
+
+			// Try to create a valid assignment avoiding self-assignments and avoid relationships
 			let attempts = 0;
 			let validAssignment = false;
 
 			while (!validAssignment && attempts < 100) {
 				validAssignment = true;
 
-				// Check if current assignment would create self-assignments
+				// Check if current assignment would create self-assignments or violate avoid relationships
 				for (let i = 0; i < remainingGivers.length; i++) {
-					if (remainingGivers[i] === remainingReceivers[i]) {
-						// Shuffle again
-						for (let k = remainingReceivers.length - 1; k > 0; k--) {
-							const j = Math.floor(random() * (k + 1));
-							[remainingReceivers[k], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[k]];
-						}
+					const giverId = remainingGivers[i];
+					const receiverId = remainingReceivers[i];
+
+					// Check for self-assignment
+					if (giverId === receiverId) {
 						validAssignment = false;
 						break;
+					}
+
+					// Check for avoid relationships
+					if (avoidPairs.has(`${giverId}-${receiverId}`)) {
+						validAssignment = false;
+						break;
+					}
+				}
+
+				if (!validAssignment) {
+					// Shuffle again
+					for (let k = remainingReceivers.length - 1; k > 0; k--) {
+						const j = Math.floor(random() * (k + 1));
+						[remainingReceivers[k], remainingReceivers[j]] = [remainingReceivers[j], remainingReceivers[k]];
 					}
 				}
 				attempts++;
 			}
 
 			if (!validAssignment) {
-				return { error: 'Unable to generate valid assignments. Try different forced relationships.' };
+				return { error: 'Unable to generate valid assignments. Try different relationship constraints.' };
 			}
 
 			// Assign remaining participants
@@ -291,6 +317,7 @@ export const actions = {
 		const data = await request.formData();
 		const giverId = data.get('giverId')?.toString();
 		const receiverId = data.get('receiverId')?.toString();
+		const relationshipType = data.get('relationshipType')?.toString() || 'force';
 
 		if (!giverId || !receiverId) {
 			return { error: 'Both giver and receiver must be selected' };
@@ -298,6 +325,10 @@ export const actions = {
 
 		if (giverId === receiverId) {
 			return { error: 'A participant cannot be assigned to themselves' };
+		}
+
+		if (!['force', 'avoid'].includes(relationshipType)) {
+			return { error: 'Invalid relationship type' };
 		}
 
 		const [exchange] = await db
@@ -310,11 +341,28 @@ export const actions = {
 		}
 
 		if (exchange.isGenerated) {
-			return { error: 'Cannot add forced relationships after assignments are generated' };
+			return { error: 'Cannot add relationships after assignments are generated' };
 		}
 
-		// Check if this forced relationship already exists
+		// Check if this exact relationship already exists
 		const existingRelationship = await db
+			.select()
+			.from(table.forcedRelationships)
+			.where(
+				and(
+					eq(table.forcedRelationships.exchangeId, exchange.id),
+					eq(table.forcedRelationships.giverId, giverId),
+					eq(table.forcedRelationships.receiverId, receiverId),
+					eq(table.forcedRelationships.relationshipType, relationshipType)
+				)
+			);
+
+		if (existingRelationship.length > 0) {
+			return { error: `This ${relationshipType} relationship already exists` };
+		}
+
+		// Check for conflicting relationships (can't have both force and avoid for same pair)
+		const conflictingRelationship = await db
 			.select()
 			.from(table.forcedRelationships)
 			.where(
@@ -325,15 +373,16 @@ export const actions = {
 				)
 			);
 
-		if (existingRelationship.length > 0) {
-			return { error: 'This forced relationship already exists' };
+		if (conflictingRelationship.length > 0 && conflictingRelationship[0].relationshipType !== relationshipType) {
+			return { error: `Cannot add ${relationshipType} relationship - conflicting ${conflictingRelationship[0].relationshipType} relationship exists` };
 		}
 
 		await db.insert(table.forcedRelationships).values({
 			id: generateId(),
 			exchangeId: exchange.id,
 			giverId,
-			receiverId
+			receiverId,
+			relationshipType
 		});
 
 		return { success: true };
