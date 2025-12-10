@@ -350,8 +350,8 @@
 						{#if data.forcedRelationships.length > 0}
 							<div class="mb-4 space-y-4">
 								<!-- Forced Relationships -->
-								{@const forcedRels = data.forcedRelationships.filter(r => r.relationshipType === 'force')}
-								{#if forcedRels.length > 0}
+								{#if data.forcedRelationships.filter(r => r.relationshipType === 'force').length > 0}
+									{@const forcedRels = data.forcedRelationships.filter(r => r.relationshipType === 'force')}
 									<div>
 										<h4 class="text-sm font-medium text-gray-700 mb-2">Forced Relationships:</h4>
 										<div class="space-y-2">
@@ -379,8 +379,8 @@
 								{/if}
 
 								<!-- Avoid Relationships -->
-								{@const avoidRels = data.forcedRelationships.filter(r => r.relationshipType === 'avoid')}
-								{#if avoidRels.length > 0}
+								{#if data.forcedRelationships.filter(r => r.relationshipType === 'avoid').length > 0}
+									{@const avoidRels = data.forcedRelationships.filter(r => r.relationshipType === 'avoid')}
 									<div>
 										<h4 class="text-sm font-medium text-gray-700 mb-2">Avoid Relationships:</h4>
 										<div class="space-y-2">
@@ -484,8 +484,8 @@
 			{:else}
 				<div class="space-y-4">
 					<!-- Personal URLs Section -->
-					{@const participantsWithoutTokens = data.participants.filter(p => !p.personalToken)}
-					{#if participantsWithoutTokens.length > 0}
+					{#if data.participants.filter(p => !p.personalToken).length > 0}
+						{@const participantsWithoutTokens = data.participants.filter(p => !p.personalToken)}
 						<div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
 							<h3 class="font-semibold text-gray-800 mb-2">Personal URLs</h3>
 							<p class="text-sm text-gray-600 mb-3">
