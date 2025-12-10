@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { generateId, hashPassword } from '$lib/server/utils';
+import { generateId, hashPassword, generateToken } from '$lib/server/utils';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { adminToken } = params;
@@ -75,7 +75,8 @@ export const actions = {
 			name,
 			email: email?.trim() || null,
 			passwordHash: hashPassword(password),
-			assignedTo: null
+			assignedTo: null,
+			personalToken: generateToken()
 		});
 
 		return { success: true };
@@ -413,6 +414,37 @@ export const actions = {
 		await db
 			.delete(table.forcedRelationships)
 			.where(eq(table.forcedRelationships.id, relationshipId));
+
+		return { success: true };
+	},
+
+	generatePersonalTokens: async ({ params }) => {
+		const { adminToken } = params;
+
+		const [exchange] = await db
+			.select()
+			.from(table.exchanges)
+			.where(eq(table.exchanges.adminToken, adminToken));
+
+		if (!exchange) {
+			error(404, 'Exchange not found');
+		}
+
+		// Get participants without personal tokens
+		const participants = await db
+			.select()
+			.from(table.participants)
+			.where(eq(table.participants.exchangeId, exchange.id));
+
+		// Generate tokens for participants that don't have them
+		for (const participant of participants) {
+			if (!participant.personalToken) {
+				await db
+					.update(table.participants)
+					.set({ personalToken: generateToken() })
+					.where(eq(table.participants.id, participant.id));
+			}
+		}
 
 		return { success: true };
 	}

@@ -21,7 +21,8 @@ export const participants = pgTable('participants', {
 	name: text('name').notNull(),
 	email: text('email'),
 	passwordHash: text('password_hash').notNull(),
-	assignedTo: text('assigned_to').references(() => participants.id)
+	assignedTo: text('assigned_to').references(() => participants.id),
+	personalToken: text('personal_token').unique()
 });
 
 export const forcedRelationships = pgTable('forced_relationships', {

@@ -47,6 +47,17 @@
 		const participant = data.participants.find((p) => p.id === participantId);
 		return participant?.name || 'Unknown';
 	}
+
+	function getPersonalUrl(participant: any) {
+		if (!participant.personalToken) return '';
+		return `${$page.url.origin}/personal/${participant.id}/${participant.personalToken}`;
+	}
+
+	function copyPersonalUrl(participant: any) {
+		const url = getPersonalUrl(participant);
+		navigator.clipboard.writeText(url);
+		// Could add a temporary "Copied!" state here
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
@@ -129,6 +140,9 @@
 								{#if data.exchange.isGenerated}
 									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
 										Assigned To
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+										Personal URL
 									</th>
 								{/if}
 								{#if !data.exchange.isGenerated}
@@ -216,6 +230,24 @@
 												>
 													••••••••
 												</button>
+											{/if}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm">
+											{#if participant.personalToken}
+												<div class="flex items-center gap-2">
+													<span class="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+														.../personal/{participant.id.slice(0, 8)}...
+													</span>
+													<button
+														onclick={() => copyPersonalUrl(participant)}
+														class="text-blue-600 hover:text-blue-800 text-xs font-medium"
+														title="Copy personal URL"
+													>
+														Copy
+													</button>
+												</div>
+											{:else}
+												<span class="text-gray-400 text-xs">No token</span>
 											{/if}
 										</td>
 									{/if}
@@ -450,14 +482,42 @@
 					</p>
 				{/if}
 			{:else}
-				<form method="POST" action="?/regenerateAssignments" use:enhance>
-					<button
-						type="submit"
-						class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-md transition duration-200"
-					>
-						Regenerate Assignments
-					</button>
-				</form>
+				<div class="space-y-4">
+					<!-- Personal URLs Section -->
+					{@const participantsWithoutTokens = data.participants.filter(p => !p.personalToken)}
+					{#if participantsWithoutTokens.length > 0}
+						<div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+							<h3 class="font-semibold text-gray-800 mb-2">Personal URLs</h3>
+							<p class="text-sm text-gray-600 mb-3">
+								Some participants don't have personal URLs yet. Generate them to allow direct assignment viewing.
+							</p>
+							<form method="POST" action="?/generatePersonalTokens" use:enhance>
+								<button
+									type="submit"
+									class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+								>
+									Generate Personal URLs
+								</button>
+							</form>
+						</div>
+					{:else}
+						<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+							<h3 class="font-semibold text-gray-800 mb-2">Personal URLs Ready</h3>
+							<p class="text-sm text-gray-600">
+								All participants have personal URLs. You can copy them from the table above and send to each participant.
+							</p>
+						</div>
+					{/if}
+
+					<form method="POST" action="?/regenerateAssignments" use:enhance>
+						<button
+							type="submit"
+							class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-md transition duration-200"
+						>
+							Regenerate Assignments
+						</button>
+					</form>
+				</div>
 			{/if}
 		</div>
 	</div>
